@@ -1,0 +1,103 @@
+Table SOURCE_SYSTEMS {
+  source_system_id number [pk, increment]
+  code varchar2(50) [not null]
+  display_name varchar2(150) [not null]
+  is_active char(1) [not null, default: 'Y']
+  created_at timestamp
+
+  indexes {
+    (code) [unique, name: 'uk_source_systems_code']
+  }
+}
+
+Table PLAYERS {
+  player_id number [pk, increment]
+  full_name varchar2(150) [not null]
+  date_of_birth date
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table PLAYER_EXTERNAL_REFS {
+  player_id number [not null]
+  source_system_id number [not null]
+  external_ref varchar2(50) [not null]
+  linked_at timestamp
+
+  primary key (source_system_id, external_ref) [name: 'pk_player_external_refs']
+
+  indexes {
+    (player_id) [name: 'idx_per_player']
+  }
+}
+
+Table TOURNAMENTS {
+  tournament_id number [pk, increment]
+  source_system_id number [not null]
+  external_ref varchar2(50) [not null]
+  name varchar2(200) [not null]
+  start_date date [not null]
+  end_date date
+  created_at timestamp
+
+  indexes {
+    (source_system_id, external_ref) [unique, name: 'uk_tournaments_source_ref']
+  }
+}
+
+Table TOURNAMENT_PARTICIPANTS {
+  tournament_id number [not null]
+  player_id number [not null]
+  seed_rating number
+
+  primary key (tournament_id, player_id) [name: 'pk_tournament_participants']
+}
+
+Table MATCHES {
+  match_id number [pk, increment]
+  tournament_id number
+  white_id number [not null]
+  black_id number [not null]
+  result varchar2(10) [not null]
+  played_on date [not null]
+  source_system_id number [not null]
+  external_ref varchar2(50)
+  created_at timestamp
+
+  indexes {
+    (tournament_id) [name: 'idx_matches_tournament']
+    (white_id, black_id) [name: 'idx_matches_players']
+    (played_on) [name: 'idx_matches_played_on']
+  }
+}
+
+Table RATING_HISTORY {
+  rating_history_id number [pk, increment]
+  player_id number [not null]
+  source_system_id number [not null]
+  rating number [not null]
+  effective_date date [not null]
+  source_event_id number
+  created_at timestamp
+
+  indexes {
+    (player_id, source_system_id, effective_date) [unique, name: 'uk_rating_history_player_source_date']
+    (player_id, effective_date) [name: 'idx_rating_history_player_date']
+  }
+}
+
+Ref: PLAYER_EXTERNAL_REFS.player_id > PLAYERS.player_id
+Ref: PLAYER_EXTERNAL_REFS.source_system_id > SOURCE_SYSTEMS.source_system_id
+
+Ref: TOURNAMENTS.source_system_id > SOURCE_SYSTEMS.source_system_id
+
+Ref: TOURNAMENT_PARTICIPANTS.tournament_id > TOURNAMENTS.tournament_id
+Ref: TOURNAMENT_PARTICIPANTS.player_id > PLAYERS.player_id
+
+Ref: MATCHES.tournament_id > TOURNAMENTS.tournament_id
+Ref: MATCHES.white_id > PLAYERS.player_id
+Ref: MATCHES.black_id > PLAYERS.player_id
+Ref: MATCHES.source_system_id > SOURCE_SYSTEMS.source_system_id
+
+Ref: RATING_HISTORY.player_id > PLAYERS.player_id
+Ref: RATING_HISTORY.source_system_id > SOURCE_SYSTEMS.source_system_id
