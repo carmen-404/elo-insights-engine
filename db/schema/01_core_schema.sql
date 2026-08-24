@@ -110,7 +110,6 @@ CREATE TABLE RATING_HISTORY (
     source_system_id  NUMBER        NOT NULL,   -- which source reported this rating
     rating             NUMBER(5)    NOT NULL,   -- as received from source, never computed here
     effective_date     DATE         NOT NULL,
-    source_event_id    NUMBER,                  -- optional link to the match/tournament that triggered this entry
     created_at          TIMESTAMP    DEFAULT SYSTIMESTAMP NOT NULL,
     CONSTRAINT fk_rating_history_player FOREIGN KEY (player_id)
         REFERENCES PLAYERS(player_id),

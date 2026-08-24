@@ -8,26 +8,18 @@
 --
 -- Covers, deliberately:
 --   - multiple European federations + one online platform
---   - cross-federation identities resolved to one player_id,
---     as if manually reviewed and merged (Cian, Lucía)
---   - a cross-federation identity that stays unresolved -
---     the documented LIMITATION - two separate player_id
---     rows for what would be the same real person (Marco)
---   - an isolated match with no tournament, tournament_id NULL
---     (Cian's ChessNet game)
---   - a withdrawn participant, registered with zero matches
---     (Hannah)
---   - an inactive source system (OLDPLATFORM)
---
--- RATING_HISTORY cases, by letter:
---   A - Aoife & Cian, tournament-linked (Dublin)
---   B - Lucía & Javier, tournament-linked (Madrid)
---   C - Lucía, a second independent rating from FIDE
---   D - Marco (RFEA identity), monthly-batched, no
---       source_event_id - the granularity LIMITATION
---   E - Cian, per-game update tied to the ChessNet match
---   F - Lukas & Marco (DSB identity), tournament-linked (Berlin)
---   G - Camille & Antoine, tournament-linked (Paris)
+--   - a cross-federation identity correctly linked via a
+--     shared FIDE-style reference
+--   - a cross-federation identity that CANNOT be linked
+--     (the documented LIMITATION) - two separate player_id
+--     rows for what would be the same real person
+--   - an isolated match with no tournament (tournament_id NULL)
+--   - tournament-linked rating updates (source_event_id set)
+--   - a monthly-batched rating update covering two tournaments
+--     at once (no single source_event_id possible - the
+--     granularity LIMITATION)
+--   - a withdrawn participant (registered, zero matches played)
+--   - an inactive source system
 -- ============================================================
 
 SET SERVEROUTPUT ON;

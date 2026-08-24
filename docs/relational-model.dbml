@@ -77,7 +77,6 @@ Table RATING_HISTORY {
   source_system_id number [not null]
   rating number [not null]
   effective_date date [not null]
-  source_event_id number
   created_at timestamp
 
   indexes {
@@ -94,7 +93,7 @@ Ref: TOURNAMENTS.source_system_id > SOURCE_SYSTEMS.source_system_id
 Ref: TOURNAMENT_PARTICIPANTS.tournament_id > TOURNAMENTS.tournament_id
 Ref: TOURNAMENT_PARTICIPANTS.player_id > PLAYERS.player_id
 
-Ref: MATCHES.tournament_id > TOURNAMENTS.tournament_id
+Ref: MATCHES.tournament_id >? TOURNAMENTS.tournament_id
 Ref: MATCHES.white_id > PLAYERS.player_id
 Ref: MATCHES.black_id > PLAYERS.player_id
 Ref: MATCHES.source_system_id > SOURCE_SYSTEMS.source_system_id
