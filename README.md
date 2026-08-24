@@ -20,11 +20,13 @@ Full schema: [`db/schema/01_core_schema.sql`](db/schema/01_core_schema.sql)
 
 ```
 db/
-├── schema/    core DDL, tablespace/user setup
-├── seed/      fictional sample data
-└── queries/   exploring the schema
-docs/          architecture and data model diagrams
-src/           Spring Boot application
+├── schema/     core DDL, tablespace/user setup
+├── seed/       fictional sample data
+└── queries/
+    ├── identity/    queries finding merged and unresolved cross-system player identities
+    └── insights/    standalone analytics queries (colour win rates, etc.)
+docs/           architecture and data model diagrams
+src/            Spring Boot application
 ```
 
 ## Known limitations
