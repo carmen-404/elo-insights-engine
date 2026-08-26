@@ -1,4 +1,4 @@
-# ELO Insights Engine
+ ELO Insights Engine
 
 Backend analytics engine that ingests player, match, and rating history data from external sources and computes performance insights — volatility, consistency, opponent strength, rating progression — exposed via a JSON API.
 
@@ -23,16 +23,18 @@ db/
 ├── schema/     core DDL, tablespace/user setup
 ├── seed/       fictional sample data
 └── queries/
-    ├── identity/    queries finding merged and unresolved cross-system player identities
-    └── insights/    standalone analytics queries (colour win rates, etc.)
+    ├── identity/    finds merged and unresolved cross-system player identities
+    └── insights/
+        ├── scoring/    match-based analytics
+        └── rating/     rating-based analytics
 docs/           architecture and data model diagrams
 src/            Spring Boot application
 ```
 
 ## Known limitations
 
-- **Cross-source identity resolution**: different rating sources each have their own player reference, but they don’t share one across systems, so the engine has no way to know when two players from different sources are actually the same person. This reflects how the surrounding chess infrastructure works — players move between federations, and even FIDE’s ID system doesn’t prevent identity fragmentation across federations or platforms.
-- **Rating attribution granularity**: how often a source reports rating updates varies — per event, per game, or on a fixed period. A source that batches several events into one update can't be split back apart; figures like gain per tournament or per colour aren't answerable from a batched source.
+- **Cross-source identity resolution**: Each rating source uses its own player reference, and they rarely share a common identifier. As a result, the engine cannot detect when two external records represent the same person. This reflects the real fragmentation across federations and platforms — even FIDE IDs don't fully unify identities.
+- **Rating attribution**: rating updates store only an effective date, with no link to any match or tournament. A source could theoretically report per‑event, but even then there’s no way to confirm the previous update was contiguous, so the link isn’t reliable. For these reasons, rating attribution was deliberately left out of the schema.
 
 ## Setup
 
