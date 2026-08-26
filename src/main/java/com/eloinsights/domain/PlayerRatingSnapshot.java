@@ -2,7 +2,8 @@ package com.eloinsights.domain;
 
 import java.time.LocalDate;
 
-public class PlayerRatingSnapshot {
+public final class PlayerRatingSnapshot {
+	
 	private final long playerId;
 	private final long sourceSystemId;
 	private final int rating;
