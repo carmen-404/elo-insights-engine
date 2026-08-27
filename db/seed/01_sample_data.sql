@@ -14,10 +14,6 @@
 --     (the documented LIMITATION) - two separate player_id
 --     rows for what would be the same real person
 --   - an isolated match with no tournament (tournament_id NULL)
---   - tournament-linked rating updates (source_event_id set)
---   - a monthly-batched rating update covering two tournaments
---     at once (no single source_event_id possible - the
---     granularity LIMITATION)
 --   - a withdrawn participant (registered, zero matches played)
 --   - an inactive source system
 -- ============================================================
@@ -194,53 +190,38 @@ BEGIN
     -- --------------------------------------------------------
     -- RATING_HISTORY
     -- --------------------------------------------------------
-    -- Case A: tournament-linked update. ICU reports Aoife's new
-    -- rating tied directly to the Dublin tournament - precise
-    -- attribution is possible here.
-    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date, source_event_id)
-        VALUES (v_aoife, v_icu, 1758, DATE '2026-03-16', v_dublin);
-    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date, source_event_id)
-        VALUES (v_cian, v_icu, 1571, DATE '2026-03-16', v_dublin);
+    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date)
+        VALUES (v_aoife, v_icu, 1758, DATE '2026-03-16');
+    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date)
+        VALUES (v_cian, v_icu, 1571, DATE '2026-03-16');
 
-    -- Case B: another tournament-linked update, different federation.
-    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date, source_event_id)
-        VALUES (v_lucia, v_rfea, 2061, DATE '2026-04-06', v_madrid);
-    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date, source_event_id)
-        VALUES (v_javier, v_rfea, 1794, DATE '2026-04-06', v_madrid);
+    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date)
+        VALUES (v_lucia, v_rfea, 2061, DATE '2026-04-06');
+    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date)
+        VALUES (v_javier, v_rfea, 1794, DATE '2026-04-06');
 
-    -- Case C: Lucía also has a FIDE-reported rating, same real
-    -- person, different source, independent number - demonstrates
-    -- one player legitimately having more than one rating history.
-    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date, source_event_id)
-        VALUES (v_lucia, v_fide, 2058, DATE '2026-04-30', NULL);
+    -- Lucía also has a FIDE-reported rating, same real person,
+    -- different source, independent number - demonstrates one
+    -- player legitimately having more than one rating history.
+    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date)
+        VALUES (v_lucia, v_fide, 2058, DATE '2026-04-30');
 
-    -- Case D: monthly-batched update, no source_event_id. RFEA
-    -- publishes Marco's (RFEA identity) new rating for the month
-    -- as a whole, after he played BOTH the Madrid tournament and
-    -- another event not modelled here. This single number cannot
-    -- be split back apart to attribute a gain to Madrid specifically
-    -- - the granularity LIMITATION, shown as real data.
-    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date, source_event_id)
-        VALUES (v_marco_rfea, v_rfea, 1649, DATE '2026-04-30', NULL);
+    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date)
+        VALUES (v_marco_rfea, v_rfea, 1649, DATE '2026-04-30');
 
-    -- Case E: per-game update from an online platform, tied to
-    -- the isolated match above via source_event_id pointing at
-    -- the match itself rather than a tournament.
-    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date, source_event_id)
-        VALUES (v_cian, v_chessnet, 1595, DATE '2026-02-20', NULL);
+    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date)
+        VALUES (v_cian, v_chessnet, 1595, DATE '2026-02-20');
 
-    -- Case F: Berlin, tournament-linked as normal.
-    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date, source_event_id)
-        VALUES (v_lukas, v_dsb, 1935, DATE '2025-12-08', v_berlin);
-    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date, source_event_id)
-        VALUES (v_marco_dsb, v_dsb, 1650, DATE '2025-12-08', v_berlin);
+    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date)
+        VALUES (v_lukas, v_dsb, 1935, DATE '2025-12-08');
+    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date)
+        VALUES (v_marco_dsb, v_dsb, 1650, DATE '2025-12-08');
     -- Hannah withdrew, so no RATING_HISTORY row follows from Berlin for her.
 
-    -- Case G: Paris, tournament-linked.
-    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date, source_event_id)
-        VALUES (v_camille, v_ffe, 1714, DATE '2026-05-09', v_paris);
-    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date, source_event_id)
-        VALUES (v_antoine, v_ffe, 1719, DATE '2026-05-09', v_paris);
+    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date)
+        VALUES (v_camille, v_ffe, 1714, DATE '2026-05-09');
+    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date)
+        VALUES (v_antoine, v_ffe, 1719, DATE '2026-05-09');
 
     COMMIT;
 
