@@ -20,13 +20,16 @@ public class PlayerScoringSnapshotRepository {
 		@Override
 		public PlayerScoringSnapshot mapRow(ResultSet rs, int rowNum) throws SQLException {
 			long matchId = rs.getLong("match_id");
-			long playerId = rs.getLong("player_id"); // from SELECT's CASE
-			long opponentId = rs.getLong("opponent_id");
-			String colour = rs.getString("colour"); // from SELECT's CASE
-			String result = rs.getString("result"); // from SELECT's CASE
+			long playerId = rs.getLong("player_id"); // bound parameter
+			long opponentId = rs.getLong("opponent_id"); // derived
+			String colour = rs.getString("colour"); // derived
+			String result = rs.getString("result"); // derived, values differ from raw column
 			LocalDate playedOn = rs.getDate("played_on").toLocalDate();
 			long sourceSystemId = rs.getLong("source_system_id");
-			Long tournamentId = rs.getObject("tournament_id", Long.class); // nullable
+			// IMPORTANT: getObject(..., Long.class) reads the column AS a Long,
+			// deciding the type at read time so it can return NULL.
+			// getLong() would SILENTLY turn NULLs into 0.
+			Long tournamentId = rs.getObject("tournament_id", Long.class);
 
 			return new PlayerScoringSnapshot(matchId, playerId, opponentId, colour, result, playedOn, sourceSystemId,
 					tournamentId);
