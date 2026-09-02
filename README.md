@@ -23,12 +23,19 @@ db/
 ├── schema/     core DDL, tablespace/user setup
 ├── seed/       fictional sample data
 └── queries/
-    ├── identity/    finds merged and unresolved cross-system player identities
+    ├── identity/     finds merged and potentially unresolved cross-system player identities
     └── insights/
         ├── scoring/    match-based analytics
         └── rating/     rating-based analytics
 docs/           architecture and data model diagrams
-src/            Spring Boot application
+src/main/java/com/eloinsights/      Spring Boot application
+├── EloInsightsEngineApplication.java   application entry point
+├── domain/       immutable DTOs for database data; fields are either direct row values or derived
+├── repository/   JdbcTemplate-based data access, one repository per DTO
+└── controller/   REST endpoints, one controller per resource
+src/main/resources/
+└── application.properties.example      template for local database credentials
+src/test/java/com/eloinsights/          test sources (currently just the default Spring Boot test)
 ```
 
 ## Known limitations
