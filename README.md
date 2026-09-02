@@ -45,3 +45,36 @@ Schema setup assumes Oracle Database FREE running locally; adjust datafile paths
 3. Run `db/seed/01_sample_data.sql` to load fictional sample data
 4. Copy `src/main/resources/application.properties.example` to `application.properties` and fill in your database credentials
 5. Run the Spring Boot application
+
+## API
+
+### Get a player
+`GET /players/{playerId}`
+
+Response:
+```json
+{"playerId":3,"fullName":"Lucía Fernández","dateOfBirth":"1995-07-22"}
+```
+Returns `404` if the player doesn't exist.
+
+### Get a player's rating history
+`GET /players/{playerId}/ratings`
+
+Response:
+```json
+[
+    {"playerId":3,"sourceSystemId":2,"rating":2061,"effectiveDate":"2026-04-06"},
+    {"playerId":3,"sourceSystemId":5,"rating":2058,"effectiveDate":"2026-04-30"}
+]
+```
+
+### Get a player's match history
+`GET /players/{playerId}/matches`
+
+Response:
+```json
+[
+    {"matchId":2,"playerId":3,"opponentId":4,"colour":"BLACK","result":"WIN","playedOn":"2026-04-04","sourceSystemId":2,"tournamentId":2},
+    {"matchId":3,"playerId":3,"opponentId":9,"colour":"WHITE","result":"DRAW","playedOn":"2026-04-05","sourceSystemId":2,"tournamentId":2}
+]
+```
