@@ -92,7 +92,7 @@ Response:
 ### Get a player's rating progression
 `GET /players/{playerId}/ratings/progression?sourceSystemId={sourceSystemId}`
 
-Progression is computed within one source at a time, mixing sources would produce a meaningless result.
+Progression is computed within one source at a time. Each source keeps its own independent rating history for a player, so mixing them would invent a progression that wouldn't be real.
 
 Response:
 ```json
