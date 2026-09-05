@@ -20,19 +20,20 @@ Full schema: [`db/schema/01_core_schema.sql`](db/schema/01_core_schema.sql)
 
 ```
 db/
+├── functions/    PL/SQL functions (SYS_REFCURSOR-based, called from Java via SimpleJdbcCall)
+├── queries/
+│   ├── identity/     finds merged and potentially unresolved cross-system player identities
+│   └── insights/
+│       ├── rating/     rating-based analytics
+│       └── scoring/    match-based analytics
 ├── schema/     core DDL, tablespace/user setup
-├── seed/       fictional sample data
-└── queries/
-    ├── identity/     finds merged and potentially unresolved cross-system player identities
-    └── insights/
-        ├── scoring/    match-based analytics
-        └── rating/     rating-based analytics
+└── seed/       fictional sample data
 docs/           architecture and data model diagrams
 src/main/java/com/eloinsights/      Spring Boot application
 ├── EloInsightsEngineApplication.java   application entry point
+├── controller/   REST endpoints, one controller per resource
 ├── domain/       immutable DTOs for database data; fields are either direct row values or derived
-├── repository/   JdbcTemplate-based data access, one repository per DTO
-└── controller/   REST endpoints, one controller per resource
+└── repository/   JdbcTemplate-based data access, one repository per DTO
 src/main/resources/
 └── application.properties.example      template for local database credentials
 src/test/java/com/eloinsights/          test sources (currently just the default Spring Boot test)
@@ -41,7 +42,8 @@ src/test/java/com/eloinsights/          test sources (currently just the default
 ## Known limitations
 
 - **Cross-source identity resolution**: Each rating source uses its own player reference, and they rarely share a common identifier. As a result, the engine cannot detect when two external records represent the same person. This reflects the real fragmentation across federations and platforms — even FIDE IDs don't fully unify identities.
-- **Rating attribution**: rating updates store only an effective date, with no link to any match or tournament. A source could theoretically report per‑event, but even then there’s no way to confirm the previous update was contiguous, so the link isn’t reliable. For these reasons, rating attribution was deliberately left out of the schema.
+- **Rating attribution**: Rating updates store only an effective date, with no link to any match or tournament. A source could theoretically report per‑event, but even then there’s no way to confirm the previous update was contiguous, so the link isn’t reliable. For these reasons, rating attribution was deliberately left out of the schema.
+- **Rating system assumption**: The engine assumes every ingested rating is Elo. However, the system has no automated way to detect whether a source is reporting a different rating system. If such a source were ingested, insight calculations that operate on `rating` values could produce incorrect or misleading results.
 
 ## Setup
 
@@ -50,8 +52,9 @@ Schema setup assumes Oracle Database FREE running locally; adjust datafile paths
 1. Run `db/schema/00_tablespace_and_user.sql` as a privileged user (creates the dedicated tablespace and schema)
 2. Run `db/schema/01_core_schema.sql` connected as `elo_insights`
 3. Run `db/seed/01_sample_data.sql` to load fictional sample data
-4. Copy `src/main/resources/application.properties.example` to `application.properties` and fill in your database credentials
-5. Run the Spring Boot application
+4. Run the scripts in `db/functions/` connected as `elo_insights`, to create the PL/SQL functions
+5. Copy `src/main/resources/application.properties.example` to `application.properties` and fill in your database credentials
+6. Run the Spring Boot application
 
 ## API
 
@@ -83,5 +86,19 @@ Response:
 [
     {"matchId":2,"playerId":3,"opponentId":4,"colour":"BLACK","result":"WIN","playedOn":"2026-04-04","sourceSystemId":2,"tournamentId":2},
     {"matchId":3,"playerId":3,"opponentId":9,"colour":"WHITE","result":"DRAW","playedOn":"2026-04-05","sourceSystemId":2,"tournamentId":2}
+]
+```
+
+### Get a player's rating progression
+`GET /players/{playerId}/ratings/progression?sourceSystemId={sourceSystemId}`
+
+Progression is computed within one source at a time, mixing sources would produce a meaningless result.
+
+Response:
+```json
+[
+    {"effectiveDate":"2026-01-10","effectiveRating":1700,"ratingDelta":null,"daysElapsed":null},
+    {"effectiveDate":"2026-02-15","effectiveRating":1720,"ratingDelta":20,"daysElapsed":36},
+    {"effectiveDate":"2026-03-16","effectiveRating":1758,"ratingDelta":38,"daysElapsed":29}
 ]
 ```

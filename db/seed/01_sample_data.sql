@@ -5,19 +5,53 @@
 -- and results are entirely fictional.
 --
 -- Run after 01_core_schema.sql, connected as elo_insights.
+-- Safe to re-run: the RESET block below clears existing seed
+-- data first, in FK-safe order.
 --
 -- Covers, deliberately:
---   - multiple European federations + one online platform
---   - a cross-federation identity correctly linked via a
---     shared FIDE-style reference
---   - a cross-federation identity that CANNOT be linked
---     (the documented LIMITATION) - two separate player_id
---     rows for what would be the same real person
+--   - identity merging only ever reflects an external, manually
+--     validated decision (Cian: ICU + ChessNet; Lucía: RFEA + FIDE)
+--     - nothing in this schema merges identities automatically.
+--     Marco Rossi shows the unmerged default: same real person,
+--     no such decision exists for him (the documented LIMITATION)
 --   - an isolated match with no tournament (tournament_id NULL)
 --   - a withdrawn participant (registered, zero matches played)
 --   - an inactive source system
+--   - a player with a multi-point rising rating history (Aoife,
+--     ICU) and one with a declining history (Javier, RFEA), so
+--     LAG()-based progression logic has real, varied data to
+--     chain through
+--   - a repeated matchup, same two players, alternating colour,
+--     across three games (Aoife vs Cian) - for colour-vs-opponent
+--     analysis
 -- ============================================================
 
+-- ============================================================
+-- RESET: clears existing seed data, in FK-safe order (children
+-- before parents), so this script can be re-run safely.
+-- ============================================================
+DELETE FROM RATING_HISTORY;
+DELETE FROM MATCHES;
+DELETE FROM TOURNAMENT_PARTICIPANTS;
+DELETE FROM TOURNAMENTS;
+DELETE FROM PLAYER_EXTERNAL_REFS;
+DELETE FROM PLAYERS;
+DELETE FROM SOURCE_SYSTEMS;
+COMMIT;
+
+-- Restart identity sequences so ids are stable and predictable
+-- across re-runs (matches the README's example player ids).
+ALTER TABLE SOURCE_SYSTEMS MODIFY source_system_id GENERATED ALWAYS AS IDENTITY (RESTART START WITH 1);
+ALTER TABLE PLAYERS MODIFY player_id GENERATED ALWAYS AS IDENTITY (RESTART START WITH 1);
+ALTER TABLE TOURNAMENTS MODIFY tournament_id GENERATED ALWAYS AS IDENTITY (RESTART START WITH 1);
+ALTER TABLE MATCHES MODIFY match_id GENERATED ALWAYS AS IDENTITY (RESTART START WITH 1);
+ALTER TABLE RATING_HISTORY MODIFY rating_history_id GENERATED ALWAYS AS IDENTITY (RESTART START WITH 1);
+
+-- ============================================================
+-- SEED DATA: source systems, players, tournaments, matches,
+-- and rating history - see notes above for what each part
+-- deliberately demonstrates.
+-- ============================================================
 SET SERVEROUTPUT ON;
 
 DECLARE
@@ -31,17 +65,16 @@ DECLARE
 
     v_aoife      NUMBER;  -- Irish player
     v_cian       NUMBER;  -- Irish player, isolated online game
-    v_lucia      NUMBER;  -- Spanish player, correctly linked RFEA + FIDE
+    v_lucia      NUMBER;  -- Spanish player, manually merged across RFEA + FIDE
     v_javier     NUMBER;  -- Spanish player
     v_lukas      NUMBER;  -- German player
     v_hannah     NUMBER;  -- German player, withdraws from a tournament
     v_camille    NUMBER;  -- French player
     v_antoine    NUMBER;  -- French player
     v_marco_rfea NUMBER;  -- "Marco Rossi" as registered with RFEA
-    v_marco_dsb  NUMBER;  -- "Marco Rossi" as registered with DSB
-                           -- same real person in the story, but no
-                           -- shared ref exists to link them - two
-                           -- separate player_id rows, on purpose
+    v_marco_dsb  NUMBER;  -- "Marco Rossi" as registered with DSB -
+                           -- same real person, but no merge decision
+                           -- exists for him; two separate rows, unmerged
 
     v_dublin     NUMBER;  -- tournament
     v_madrid     NUMBER;  -- tournament
@@ -83,11 +116,9 @@ BEGIN
     INSERT INTO PLAYERS (full_name, date_of_birth) VALUES ('Camille Dubois', DATE '1996-12-08') RETURNING player_id INTO v_camille;
     INSERT INTO PLAYERS (full_name, date_of_birth) VALUES ('Antoine Laurent', DATE '1994-03-25') RETURNING player_id INTO v_antoine;
 
-    -- "Marco Rossi": deliberately two separate player_id rows.
-    -- Same real person in this story, registered independently
-    -- with RFEA and DSB, with no shared ref to link them - this
-    -- is the identity LIMITATION documented on PLAYER_EXTERNAL_REFS,
-    -- shown here as data rather than just a comment.
+    -- Marco Rossi: same real person, but the engine can't detect that
+    -- across sources (see README's identity resolution limitation) -
+    -- merging only ever comes from outside info plus human validation.
     INSERT INTO PLAYERS (full_name, date_of_birth) VALUES ('Marco Rossi', DATE '1993-06-19') RETURNING player_id INTO v_marco_rfea;
     INSERT INTO PLAYERS (full_name, date_of_birth) VALUES ('Marco Rossi', DATE '1993-06-19') RETURNING player_id INTO v_marco_dsb;
 
@@ -104,14 +135,14 @@ BEGIN
     INSERT INTO PLAYER_EXTERNAL_REFS (player_id, source_system_id, external_ref) VALUES (v_camille, v_ffe, 'FFE-7710');
     INSERT INTO PLAYER_EXTERNAL_REFS (player_id, source_system_id, external_ref) VALUES (v_antoine, v_ffe, 'FFE-7744');
 
-    -- Lucía: correctly linked across RFEA and FIDE, because both
-    -- sources happen to report the same shared reference. This is
-    -- the ONE case where cross-federation identity resolution
-    -- actually works, per the schema's documented mechanism.
+    -- Lucía: manually merged into one player_id across RFEA and FIDE.
+    -- Nothing in this schema detects or performs this - it's seed data
+    -- representing a merge that would have happened externally, same
+    -- as Cian's ICU+ChessNet merge above.
     INSERT INTO PLAYER_EXTERNAL_REFS (player_id, source_system_id, external_ref) VALUES (v_lucia, v_rfea, 'RFEA-2205');
     INSERT INTO PLAYER_EXTERNAL_REFS (player_id, source_system_id, external_ref) VALUES (v_lucia, v_fide, 'FIDE-1234567');
 
-    -- Marco Rossi: two unlinked identities, on purpose (see PLAYERS above).
+    -- Marco Rossi: two unmerged identities, the default outcome (see PLAYERS above for why).
     INSERT INTO PLAYER_EXTERNAL_REFS (player_id, source_system_id, external_ref) VALUES (v_marco_rfea, v_rfea, 'RFEA-4410');
     INSERT INTO PLAYER_EXTERNAL_REFS (player_id, source_system_id, external_ref) VALUES (v_marco_dsb, v_dsb, 'DSB-6602');
 
@@ -158,9 +189,16 @@ BEGIN
     -- --------------------------------------------------------
     -- MATCHES
     -- --------------------------------------------------------
-    -- Dublin Spring Open: Aoife (white) beats Cian
+    -- Dublin Spring Open, round 1: Aoife (white) beats Cian
     INSERT INTO MATCHES (tournament_id, white_id, black_id, result, played_on, source_system_id, external_ref)
         VALUES (v_dublin, v_aoife, v_cian, 'WHITE_WIN', DATE '2026-03-14', v_icu, 'ICU-T-2026-01-R1-B1');
+
+    -- Dublin Spring Open, round 2: Aoife (white) beats Cian again -
+    -- second meeting, same colour assignment, extending the pattern
+    -- used for colour-vs-opponent analysis (see isolated ChessNet
+    -- game below for their third, colour-reversed meeting).
+    INSERT INTO MATCHES (tournament_id, white_id, black_id, result, played_on, source_system_id, external_ref)
+        VALUES (v_dublin, v_aoife, v_cian, 'WHITE_WIN', DATE '2026-03-15', v_icu, 'ICU-T-2026-01-R2-B1');
 
     -- Copa de Madrid: Lucía (black) beats Javier
     INSERT INTO MATCHES (tournament_id, white_id, black_id, result, played_on, source_system_id, external_ref)
@@ -179,9 +217,12 @@ BEGIN
     INSERT INTO MATCHES (tournament_id, white_id, black_id, result, played_on, source_system_id, external_ref)
         VALUES (v_paris, v_antoine, v_camille, 'BLACK_WIN', DATE '2026-05-09', v_ffe, 'FFE-T-2026-03-R1-B1');
 
-    -- Isolated online game: Cian vs a ChessNet-only opponent
-    -- (using Aoife's player_id here for simplicity - in reality
-    -- would usually be someone with no federation ties at all).
+    -- Isolated online game: Cian (white) beats Aoife (black) - their
+    -- third meeting overall, and the one where the colours are
+    -- reversed from their two Dublin games above. Together, the
+    -- three Aoife-Cian games show a real "does colour matter against
+    -- this specific opponent" pattern: Aoife has won both games as
+    -- white, lost her one game as black.
     -- tournament_id is NULL: this game belongs to no tournament.
     INSERT INTO MATCHES (tournament_id, white_id, black_id, result, played_on, source_system_id, external_ref)
         VALUES (NULL, v_cian, v_aoife, 'WHITE_WIN', DATE '2026-02-20', v_chessnet, 'cn_game_88213');
@@ -190,13 +231,29 @@ BEGIN
     -- --------------------------------------------------------
     -- RATING_HISTORY
     -- --------------------------------------------------------
+    -- Aoife: three ICU entries, same source, rising - gives the
+    -- progression function (LAG-based) a real, increasing sequence
+    -- to chain through.
+    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date)
+        VALUES (v_aoife, v_icu, 1700, DATE '2026-01-10');
+    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date)
+        VALUES (v_aoife, v_icu, 1720, DATE '2026-02-15');
     INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date)
         VALUES (v_aoife, v_icu, 1758, DATE '2026-03-16');
+
     INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date)
         VALUES (v_cian, v_icu, 1571, DATE '2026-03-16');
 
     INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date)
         VALUES (v_lucia, v_rfea, 2061, DATE '2026-04-06');
+
+    -- Javier: three RFEA entries, same source, declining - gives the
+    -- progression function a real negative-delta sequence to chain
+    -- through, alongside Aoife's rising one.
+    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date)
+        VALUES (v_javier, v_rfea, 1850, DATE '2026-02-01');
+    INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date)
+        VALUES (v_javier, v_rfea, 1820, DATE '2026-03-01');
     INSERT INTO RATING_HISTORY (player_id, source_system_id, rating, effective_date)
         VALUES (v_javier, v_rfea, 1794, DATE '2026-04-06');
 
