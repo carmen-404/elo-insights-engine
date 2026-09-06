@@ -45,6 +45,14 @@ src/test/java/com/eloinsights/          test sources (currently just the default
 - **Rating attribution**: Rating updates store only an effective date, with no link to any match or tournament. A source could theoretically report per‑event, but even then there’s no way to confirm the previous update was contiguous, so the link isn’t reliable. For these reasons, rating attribution was deliberately left out of the schema.
 - **Rating system assumption**: The engine assumes every ingested rating is Elo. However, the system has no automated way to detect whether a source is reporting a different rating system. If such a source were ingested, insight calculations that operate on `rating` values could produce incorrect or misleading results.
 
+## Where computation happens
+
+Anything beyond what a single SQL statement can express is handled either in PL/SQL or in Java. That choice is often driven by portability (PL/SQL is Oracle-specific; Java runs against any database), but this project is deliberately built against Oracle. The real deciding factors are reusability and efficiency.
+
+- **Plain SQL, via JdbcTemplate**: Lookups and perspective-reorientation possible in a single query, not needing either.
+- **PL/SQL functions/procedures, via SimpleJdbcCall**: Standalone computations over raw tables stored in a reusable database object (not just embedded in one Java method) that's callable independently, and can run closer to the data (avoiding pulling many rows into Java just to process them there). PL/SQL also supports procedural logic that plain SQL structurally can't (branching, loops, variables, exception handling, ...) since it's a full programming language.
+- **Java-side aggregation, on already-fetched data**: Insights derivable from data that another repository's method already fetches for a different purpose. Whether this costs more or less than aggregating in SQL/PL-SQL depends on the data involved (decided case by case, not assumed either way). Java also does things that SQL can't (combining data from multiple repositories, richer error handling, reaching outside the database, ...).
+
 ## Setup
 
 Schema setup assumes Oracle Database FREE running locally; adjust datafile paths in `db/schema/00_tablespace_and_user.sql` if using a different edition or install.
