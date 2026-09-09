@@ -87,13 +87,22 @@ Response:
 ```
 
 ### Get a player's match history
-`GET /players/{playerId}/matches`
+`GET /players/{playerId}/matches?sourceSystemId={id}&opponentId={id}&tournamentId={id}&from={date}&to={date}`
+
+The query parameters `sourceSystemId`, `opponentId`, `tournamentId`, `from`, and `to` are optional filters. If one is omitted, it is not applied. Dates use the `YYYY-MM-DD` format.
 
 Response:
 ```json
 [
-    {"matchId":2,"playerId":3,"opponentId":4,"colour":"BLACK","result":"WIN","playedOn":"2026-04-04","sourceSystemId":2,"tournamentId":2},
-    {"matchId":3,"playerId":3,"opponentId":9,"colour":"WHITE","result":"DRAW","playedOn":"2026-04-05","sourceSystemId":2,"tournamentId":2}
+    {"matchId":3,"playerId":3,"opponentId":4,"colour":"BLACK","result":"WIN","playedOn":"2026-04-04","sourceSystemId":2,"tournamentId":2},
+    {"matchId":4,"playerId":3,"opponentId":9,"colour":"WHITE","result":"DRAW","playedOn":"2026-04-05","sourceSystemId":2,"tournamentId":2}
+]
+```
+
+Filters can combine, e.g. `GET /players/3/matches?opponentId=4&from=2026-01-01&to=2026-04-04`:
+```json
+[
+    {"matchId":3,"playerId":3,"opponentId":4,"colour":"BLACK","result":"WIN","playedOn":"2026-04-04","sourceSystemId":2,"tournamentId":2}
 ]
 ```
 

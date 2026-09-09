@@ -5,15 +5,20 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.List;
 
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.stereotype.Repository;
 
 import com.eloinsights.domain.PlayerScoringSnapshot;
 
-@Repository // marks this as a Spring-managed bean
+@Repository
 public class PlayerScoringSnapshotRepository {
-	private final JdbcTemplate jdbcTemplate;
+	
+	// Improves readability and avoids errors with multiple and/or repeated parameters.
+	private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+	
 	// ROWMAPPER: Converts one row of MATCHES into one PlayerScoringSnapshot.
 	private static final RowMapper<PlayerScoringSnapshot> SCORING_SNAPSHOT_MAPPER = new RowMapper<PlayerScoringSnapshot>() {
 
@@ -31,35 +36,69 @@ public class PlayerScoringSnapshotRepository {
 			// getLong() would SILENTLY turn NULLs into 0.
 			Long tournamentId = rs.getObject("tournament_id", Long.class);
 
-			return new PlayerScoringSnapshot(matchId, playerId, opponentId, colour, result, playedOn, sourceSystemId,
+			return new PlayerScoringSnapshot(
+					matchId,
+					playerId,
+					opponentId,
+					colour,
+					result,
+					playedOn,
+					sourceSystemId,
 					tournamentId);
 		}
 	};
 
 	// CONSTRUCTOR (Spring supplies the JdbcTemplate automatically)
-	public PlayerScoringSnapshotRepository(JdbcTemplate jdbcTemplate) {
-		this.jdbcTemplate = jdbcTemplate;
+	public PlayerScoringSnapshotRepository(NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
+		this.namedParameterJdbcTemplate = namedParameterJdbcTemplate;
 	}
 
 	// METHODS
-	public List<PlayerScoringSnapshot> findByPlayerId(long playerId) {
-		String sql = "SELECT " + "match_id, "
-				+ "? AS player_id, "
-				+ "CASE WHEN white_id = ? THEN black_id ELSE white_id END AS opponent_id, "
-				+ "CASE WHEN white_id = ? THEN 'WHITE' ELSE 'BLACK' END AS colour, "
-				+ "CASE WHEN white_id = ? "
-				+ "    THEN CASE result WHEN 'WHITE_WIN' THEN 'WIN' WHEN 'BLACK_WIN' THEN 'LOSE' ELSE 'DRAW' END "
-				+ "    ELSE CASE result WHEN 'WHITE_WIN' THEN 'LOSE' WHEN 'BLACK_WIN' THEN 'WIN' ELSE 'DRAW' END "
-				+ "END AS result, "
-				+ "played_on, source_system_id, tournament_id "
-				+ "FROM MATCHES "
-				+ "WHERE white_id = ? OR black_id = ? "
-				+ "ORDER BY played_on";
+	public List<PlayerScoringSnapshot> findByPlayerIdWithFilters(
+			long playerId,
+			Long sourceSystemId, // null = ignore
+			Long opponentId, // null = ignore
+			Long tournamentId, // null = ignore
+			LocalDate from, // null = ignore
+			LocalDate to // null = ignore
+	) {
+		String sql = """
+				SELECT
+				    match_id,
+				    :playerId AS player_id,
+				    CASE WHEN white_id = :playerId THEN black_id ELSE white_id END AS opponent_id,
+				    CASE WHEN white_id = :playerId THEN 'WHITE' ELSE 'BLACK' END AS colour,
+				    CASE WHEN white_id = :playerId
+				         THEN CASE result WHEN 'WHITE_WIN' THEN 'WIN' WHEN 'BLACK_WIN' THEN 'LOSE' ELSE 'DRAW' END
+				         ELSE CASE result WHEN 'WHITE_WIN' THEN 'LOSE' WHEN 'BLACK_WIN' THEN 'WIN' ELSE 'DRAW' END
+				    END AS result,
+				    played_on,
+				    source_system_id,
+				    tournament_id
+				FROM MATCHES
+				WHERE (white_id = :playerId OR black_id = :playerId)
+				  AND (:sourceSystemId IS NULL OR source_system_id = :sourceSystemId)
+				  AND (:opponentId IS NULL OR
+				       (white_id = :playerId AND black_id = :opponentId) OR
+				       (black_id = :playerId AND white_id = :opponentId))
+				  AND (:tournamentId IS NULL OR tournament_id = :tournamentId)
+				  AND (:fromDate IS NULL OR played_on >= :fromDate)
+				  AND (:toDate IS NULL OR played_on <= :toDate)
+				ORDER BY played_on
+				""";
+		
+		// Maps each parameter value to its corresponding :name in the SQL.
+		SqlParameterSource params = new MapSqlParameterSource()
+				.addValue("playerId", playerId)
+				.addValue("sourceSystemId", sourceSystemId)
+				.addValue("opponentId", opponentId)
+				.addValue("tournamentId", tournamentId)
+				.addValue("fromDate", from)
+				.addValue("toDate", to);
 
-		// sql = the query; SCORING_SNAPSHOT_MAPPER = builds one PlayerScoringSnapshot per row;
-		// the rest = one value per ? in sql, in order.
-		return jdbcTemplate.query(sql, SCORING_SNAPSHOT_MAPPER, playerId, playerId, playerId, playerId, playerId,
-				playerId);
+		
+		// SCORING_SNAPSHOT_MAPPER builds one PlayerScoringSnapshot per row
+		return namedParameterJdbcTemplate.query(sql, params, SCORING_SNAPSHOT_MAPPER);
 	}
 
 }
