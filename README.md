@@ -33,7 +33,8 @@ src/main/java/com/eloinsights/      Spring Boot application
 ├── EloInsightsEngineApplication.java   application entry point
 ├── controller/   REST endpoints, one controller per resource
 ├── domain/       immutable DTOs for database data; fields are either direct row values or derived
-└── repository/   JdbcTemplate-based data access, one repository per DTO
+├── repository/   JdbcTemplate-based data access, one repository per DTO
+└── service/      computation logic on top of repositories or other services, no direct DB access
 src/main/resources/
 └── application.properties.example      template for local database credentials
 src/test/java/com/eloinsights/          test sources (currently just the default Spring Boot test)
@@ -69,15 +70,21 @@ Schema setup assumes Oracle Database FREE running locally; adjust datafile paths
 ### Get a player
 `GET /players/{playerId}`
 
+Example, `GET /players/3`
 Response:
 ```json
-{"playerId":3,"fullName":"Lucía Fernández","dateOfBirth":"1995-07-22"}
+{
+    "playerId":3,
+    "fullName":"Lucía Fernández",
+    "dateOfBirth":"1995-07-22"
+}
 ```
 Returns `404` if the player doesn't exist.
 
 ### Get a player's rating history
 `GET /players/{playerId}/ratings`
 
+Example, `GET /players/3/ratings`
 Response:
 ```json
 [
@@ -91,6 +98,7 @@ Response:
 
 The query parameters `sourceSystemId`, `opponentId`, `tournamentId`, `from`, and `to` are optional filters. If one is omitted, it is not applied. Dates use the `YYYY-MM-DD` format.
 
+No filters, e.g. `GET /players/3/matches`:
 Response:
 ```json
 [
@@ -106,11 +114,45 @@ Filters can combine, e.g. `GET /players/3/matches?opponentId=4&from=2026-01-01&t
 ]
 ```
 
+### Get a player's colour performance
+
+`GET /players/{playerId}/matches/colour-performance?sourceSystemId={id}&opponentId={id}&tournamentId={id}&from={date}&to={date}`
+
+Returns the player's match performance split by colour. The query parameters `sourceSystemId`, `opponentId`, `tournamentId`, `from`, and `to` are optional filters. If one is omitted, it is not applied. Dates use the `YYYY-MM-DD` format.
+
+No filters, e.g. `GET /players/1/matches/colour-performance`:
+Response:
+```json
+{
+    "playerId":1,
+    "whiteWinsCount":2,
+    "blackWinsCount":0,
+    "whiteLossesCount":0,
+    "blackLossesCount":1,
+    "whiteDrawsCount":0,
+    "blackDrawsCount":0
+}
+```
+
+Filters can combine, e.g. `GET /players/3/matches/colour-performance?sourceSystemId=2&from=2026-01-01&to=2026-04-04`
+```json
+{
+    "playerId":3,
+    "whiteWinsCount":0,
+    "blackWinsCount":1,
+    "whiteLossesCount":0,
+    "blackLossesCount":0,
+    "whiteDrawsCount":0,
+    "blackDrawsCount":0
+}
+```
+
 ### Get a player's rating progression
 `GET /players/{playerId}/ratings/progression?sourceSystemId={sourceSystemId}`
 
 Progression is computed within one source at a time. Each source keeps its own independent rating history for a player, so mixing them would invent a progression that wouldn't be real.
 
+`sourceSystemId` is required e.g. `GET /players/1/ratings/progression?sourceSystemId=1`
 Response:
 ```json
 [
