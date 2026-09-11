@@ -10,8 +10,8 @@ CREATE USER elo_insights IDENTIFIED BY "<SET_YOUR_OWN_PASSWORD>"
     TEMPORARY TABLESPACE temp
     QUOTA UNLIMITED ON elo_insights_data;
 
--- Minimum privileges required to build and run the schema
-GRANT CREATE SESSION, CREATE TABLE, CREATE SEQUENCE, CREATE VIEW TO elo_insights;
+-- Privileges required to build and run the schema
+GRANT CREATE SESSION, CREATE TABLE, CREATE SEQUENCE, CREATE VIEW, CREATE TRIGGER TO elo_insights;
 
 -- Required later, once PKG_INGESTION and PKG_ANALYTICS are added
 GRANT CREATE PROCEDURE TO elo_insights;

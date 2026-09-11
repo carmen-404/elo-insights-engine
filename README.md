@@ -1,8 +1,8 @@
  ELO Insights Engine
 
-Backend analytics engine that ingests player, match, and rating history data from external sources and computes performance insights — volatility, consistency, opponent strength, rating progression — exposed via a JSON API.
+Backend insights engine that ingests player, match, and rating history data from external sources and computes performance insights — volatility, consistency, opponent strength, rating progression — exposed via a JSON API.
 
-This is an analytics engine, not a rating calculator. Ratings are received from external sources (federations, clubs, online platforms, etc.); nothing in this project computes or derives a rating.
+This is an insights engine, not a rating calculator. Ratings are received from external sources (federations, clubs, online platforms, etc.); nothing in this project computes or derives a rating.
 
 ## Data model
 
@@ -24,16 +24,17 @@ db/
 ├── queries/
 │   ├── identity/     finds merged and potentially unresolved cross-system player identities
 │   └── insights/
-│       ├── rating/     rating-based analytics
-│       └── scoring/    match-based analytics
+│       ├── rating/     rating-based insights
+│       └── scoring/    match-based insights
 ├── schema/     core DDL, tablespace/user setup
-└── seed/       fictional sample data
+├── seed/       fictional sample data
+└── triggers/     enforces business rules DDL/FKs can't (see "Business rules beyond the schema's structure")
 docs/           architecture and data model diagrams
 src/main/java/com/eloinsights/      Spring Boot application
 ├── EloInsightsEngineApplication.java   application entry point
 ├── controller/   REST endpoints, one controller per resource
 ├── domain/       immutable DTOs for database data; fields are either direct row values or derived
-├── repository/   JdbcTemplate-based data access, one repository per DTO
+├── repository/   database access using Spring JDBC (JdbcTemplate and NamedParameterJdbcTemplate)
 └── service/      computation logic on top of repositories or other services, no direct DB access
 src/main/resources/
 └── application.properties.example      template for local database credentials
@@ -46,12 +47,16 @@ src/test/java/com/eloinsights/          test sources (currently just the default
 - **Rating attribution**: Rating updates store only an effective date, with no link to any match or tournament. A source could theoretically report per‑event, but even then there’s no way to confirm the previous update was contiguous, so the link isn’t reliable. For these reasons, rating attribution was deliberately left out of the schema.
 - **Rating system assumption**: The engine assumes every ingested rating is Elo. However, the system has no automated way to detect whether a source is reporting a different rating system. If such a source were ingested, insight calculations that operate on `rating` values could produce incorrect or misleading results.
 
+## Business rules beyond the schema's structure
+
+A player appearing in a match, a rating update, or a tournament roster must be registered with the same source reporting them (a federation cannot report on a player it's never registered). `player_source_uk` on `PLAYER_EXTERNAL_REFS` backs this: one registration per player, per source, so the check behind it can never match more than one row. Enforced by the triggers in `db/triggers/`.
+
 ## Where computation happens
 
 Anything beyond what a single SQL statement can express is handled either in PL/SQL or in Java. That choice is often driven by portability (PL/SQL is Oracle-specific; Java runs against any database), but this project is deliberately built against Oracle. The real deciding factors are reusability and efficiency.
 
-- **Plain SQL, via JdbcTemplate**: Lookups and perspective-reorientation possible in a single query, not needing either.
-- **PL/SQL functions/procedures, via SimpleJdbcCall**: Standalone computations over raw tables stored in a reusable database object (not just embedded in one Java method) that's callable independently, and can run closer to the data (avoiding pulling many rows into Java just to process them there). PL/SQL also supports procedural logic that plain SQL structurally can't (branching, loops, variables, exception handling, ...) since it's a full programming language.
+- **Plain SQL, via JdbcTemplate**: Lookups and perspective reorientation that can be handled in a single query, without PL/SQL or Java.
+- **PL/SQL functions/procedures, via SimpleJdbcCall**: Standalone computations over raw tables, stored in reusable database objects and executed closer to the data (avoiding pulling many rows into Java just to process them there). PL/SQL is also used where procedural logic makes plain SQL impractical.
 - **Java-side aggregation, on already-fetched data**: Insights derivable from data that another repository's method already fetches for a different purpose. Whether this costs more or less than aggregating in SQL/PL-SQL depends on the data involved (decided case by case, not assumed either way). Java also does things that SQL can't (combining data from multiple repositories, richer error handling, reaching outside the database, ...).
 
 ## Setup
@@ -60,10 +65,11 @@ Schema setup assumes Oracle Database FREE running locally; adjust datafile paths
 
 1. Run `db/schema/00_tablespace_and_user.sql` as a privileged user (creates the dedicated tablespace and schema)
 2. Run `db/schema/01_core_schema.sql` connected as `elo_insights`
-3. Run `db/seed/01_sample_data.sql` to load fictional sample data
-4. Run the scripts in `db/functions/` connected as `elo_insights`, to create the PL/SQL functions
-5. Copy `src/main/resources/application.properties.example` to `application.properties` and fill in your database credentials
-6. Run the Spring Boot application
+3. Run the scripts in `db/triggers/` connected as `elo_insights`, to create the database triggers enforcing business rules
+4. Run `db/seed/01_sample_data.sql` to load fictional sample data
+5. Run the scripts in `db/functions/` connected as `elo_insights`, to create the PL/SQL functions
+6. Copy `src/main/resources/application.properties.example` to `application.properties` and fill in your database credentials
+7. Run the Spring Boot application
 
 ## API
 

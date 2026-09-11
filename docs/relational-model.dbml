@@ -3,10 +3,10 @@ Table SOURCE_SYSTEMS {
   code varchar2(50) [not null]
   display_name varchar2(150) [not null]
   is_active char(1) [not null, default: 'Y']
-  created_at timestamp
+  created_at timestamp [default: `SYSTIMESTAMP`]
 
   indexes {
-    (code) [unique, name: 'uk_source_systems_code']
+    (code) [unique, name: 'source_systems_code_uk']
   }
 }
 
@@ -14,20 +14,21 @@ Table PLAYERS {
   player_id number [pk, increment]
   full_name varchar2(150) [not null]
   date_of_birth date
-  created_at timestamp
-  updated_at timestamp
+  created_at timestamp [default: `SYSTIMESTAMP`]
+  updated_at timestamp [default: `SYSTIMESTAMP`]
 }
 
 Table PLAYER_EXTERNAL_REFS {
   player_id number [not null]
-  source_system_id number [not null]
-  external_ref varchar2(50) [not null]
-  linked_at timestamp
+  source_system_id number
+  external_ref varchar2(50)
+  linked_at timestamp [default: `SYSTIMESTAMP`]
 
-  primary key (source_system_id, external_ref) [name: 'pk_player_external_refs']
+  primary key (source_system_id, external_ref) [name: 'player_external_refs_pk']
 
   indexes {
-    (player_id) [name: 'idx_per_player']
+    (player_id, source_system_id) [unique, name: 'player_source_uk']
+    (player_id) [name: 'player_external_refs_player_idx']
   }
 }
 
@@ -38,19 +39,19 @@ Table TOURNAMENTS {
   name varchar2(200) [not null]
   start_date date [not null]
   end_date date
-  created_at timestamp
+  created_at timestamp [default: `SYSTIMESTAMP`]
 
   indexes {
-    (source_system_id, external_ref) [unique, name: 'uk_tournaments_source_ref']
+    (source_system_id, external_ref) [unique, name: 'tournaments_external_ref_uk']
   }
 }
 
 Table TOURNAMENT_PARTICIPANTS {
-  tournament_id number [not null]
-  player_id number [not null]
-  seed_rating number
+  tournament_id number
+  player_id number
+  seed_rating number(5)
 
-  primary key (tournament_id, player_id) [name: 'pk_tournament_participants']
+  primary key (tournament_id, player_id) [name: 'tournament_participants_pk']
 }
 
 Table MATCHES {
@@ -62,12 +63,12 @@ Table MATCHES {
   played_on date [not null]
   source_system_id number [not null]
   external_ref varchar2(50)
-  created_at timestamp
+  created_at timestamp [default: `SYSTIMESTAMP`]
 
   indexes {
-    (tournament_id) [name: 'idx_matches_tournament']
-    (white_id, black_id) [name: 'idx_matches_players']
-    (played_on) [name: 'idx_matches_played_on']
+    (tournament_id) [name: 'matches_tournament_idx']
+    (white_id, black_id) [name: 'matches_players_idx']
+    (played_on) [name: 'matches_played_on_idx']
   }
 }
 
@@ -75,16 +76,17 @@ Table RATING_HISTORY {
   rating_history_id number [pk, increment]
   player_id number [not null]
   source_system_id number [not null]
-  rating number [not null]
+  rating number(5) [not null]
   effective_date date [not null]
-  created_at timestamp
+  created_at timestamp [default: `SYSTIMESTAMP`]
 
   indexes {
-    (player_id, source_system_id, effective_date) [unique, name: 'uk_rating_history_player_source_date']
-    (player_id, effective_date) [name: 'idx_rating_history_player_date']
+    (player_id, source_system_id, effective_date) [unique, name: 'rating_history_player_source_date_uk']
+    (player_id, effective_date) [name: 'rating_history_player_date_idx']
   }
 }
 
+// Foreign keys
 Ref: PLAYER_EXTERNAL_REFS.player_id > PLAYERS.player_id
 Ref: PLAYER_EXTERNAL_REFS.source_system_id > SOURCE_SYSTEMS.source_system_id
 
