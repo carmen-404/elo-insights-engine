@@ -81,6 +81,8 @@ CREATE TABLE TOURNAMENTS (
     CONSTRAINT tournaments_source_fk FOREIGN KEY (source_system_id)
         REFERENCES SOURCE_SYSTEMS(source_system_id),
     CONSTRAINT tournaments_external_ref_uk UNIQUE (source_system_id, external_ref),
+    -- Required for MATCHES' composite foreign key.
+    CONSTRAINT tournaments_source_tournament_uk UNIQUE (source_system_id, tournament_id),
     CONSTRAINT tournament_dates_chk CHECK (end_date IS NULL OR end_date >= start_date)
 );
 
@@ -114,12 +116,15 @@ CREATE TABLE MATCHES (
     source_system_id  NUMBER          NOT NULL,
     external_ref      VARCHAR2(50),                -- nullable: not every source IDs individual games
     created_at        TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
-    CONSTRAINT matches_tournament_fk FOREIGN KEY (tournament_id)
-        REFERENCES TOURNAMENTS(tournament_id),
+    -- Integrity rule: a match's tournament, if any, must belong
+    -- to the same source system as the match.
+    CONSTRAINT matches_tournament_source_fk FOREIGN KEY (source_system_id, tournament_id)
+        REFERENCES TOURNAMENTS(source_system_id, tournament_id),
     CONSTRAINT matches_white_fk FOREIGN KEY (white_id)
         REFERENCES PLAYERS(player_id),
     CONSTRAINT matches_black_fk FOREIGN KEY (black_id)
         REFERENCES PLAYERS(player_id),
+    -- Match source must exist whether or not it belongs to a tournament.
     CONSTRAINT matches_source_fk FOREIGN KEY (source_system_id)
         REFERENCES SOURCE_SYSTEMS(source_system_id),
     CONSTRAINT match_result_chk CHECK (result IN ('WHITE_WIN', 'BLACK_WIN', 'DRAW')),
@@ -131,16 +136,16 @@ CREATE TABLE RATING_HISTORY (
     rating_history_id NUMBER        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     player_id         NUMBER        NOT NULL,
     source_system_id  NUMBER        NOT NULL,   -- which source reported this rating
-    rating             NUMBER(5)    NOT NULL,   -- as received from source, never computed here
-    effective_date     DATE         NOT NULL,
-    created_at          TIMESTAMP    DEFAULT SYSTIMESTAMP NOT NULL,
+    rating            NUMBER(5)     NOT NULL,    -- as received from source, never computed here
+    effective_date    TIMESTAMP     NOT NULL,
+    created_at        TIMESTAMP    DEFAULT SYSTIMESTAMP NOT NULL,
     CONSTRAINT rating_history_player_fk FOREIGN KEY (player_id)
         REFERENCES PLAYERS(player_id),
     CONSTRAINT rating_history_source_fk FOREIGN KEY (source_system_id)
         REFERENCES SOURCE_SYSTEMS(source_system_id),
-    CONSTRAINT rating_positive_chk CHECK (rating > 0),
-    CONSTRAINT rating_history_player_source_date_uk
-        UNIQUE (player_id, source_system_id, effective_date)
+        CONSTRAINT rating_history_player_source_effective_uk
+    UNIQUE (player_id, source_system_id, effective_date),
+    CONSTRAINT rating_positive_chk CHECK (rating > 0)
 );
 
 CREATE INDEX rating_history_player_date_idx ON RATING_HISTORY(player_id, effective_date);

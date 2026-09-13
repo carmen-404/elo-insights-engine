@@ -43,6 +43,7 @@ Table TOURNAMENTS {
 
   indexes {
     (source_system_id, external_ref) [unique, name: 'tournaments_external_ref_uk']
+    (source_system_id, tournament_id) [unique, name: 'tournaments_source_tournament_uk']
   }
 }
 
@@ -77,16 +78,18 @@ Table RATING_HISTORY {
   player_id number [not null]
   source_system_id number [not null]
   rating number(5) [not null]
-  effective_date date [not null]
+  effective_date timestamp [not null]
   created_at timestamp [default: `SYSTIMESTAMP`]
 
   indexes {
-    (player_id, source_system_id, effective_date) [unique, name: 'rating_history_player_source_date_uk']
+    (player_id, source_system_id, effective_date) [unique, name: 'rating_history_player_source_effective_uk']
     (player_id, effective_date) [name: 'rating_history_player_date_idx']
   }
 }
 
+
 // Foreign keys
+
 Ref: PLAYER_EXTERNAL_REFS.player_id > PLAYERS.player_id
 Ref: PLAYER_EXTERNAL_REFS.source_system_id > SOURCE_SYSTEMS.source_system_id
 
@@ -95,10 +98,12 @@ Ref: TOURNAMENTS.source_system_id > SOURCE_SYSTEMS.source_system_id
 Ref: TOURNAMENT_PARTICIPANTS.tournament_id > TOURNAMENTS.tournament_id
 Ref: TOURNAMENT_PARTICIPANTS.player_id > PLAYERS.player_id
 
-Ref: MATCHES.tournament_id >? TOURNAMENTS.tournament_id
 Ref: MATCHES.white_id > PLAYERS.player_id
 Ref: MATCHES.black_id > PLAYERS.player_id
 Ref: MATCHES.source_system_id > SOURCE_SYSTEMS.source_system_id
+
+// Match tournament must belong to the same source system
+Ref: MATCHES.(source_system_id, tournament_id) > TOURNAMENTS.(source_system_id, tournament_id)
 
 Ref: RATING_HISTORY.player_id > PLAYERS.player_id
 Ref: RATING_HISTORY.source_system_id > SOURCE_SYSTEMS.source_system_id

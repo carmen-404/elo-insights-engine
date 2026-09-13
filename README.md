@@ -10,6 +10,8 @@ This is an insights engine, not a rating calculator. Ratings are received from e
 
 Full schema: [`db/schema/01_core_schema.sql`](db/schema/01_core_schema.sql)
 
+`RATING_HISTORY.effective_date` uses `TIMESTAMP` to support sources that may publish multiple rating updates on the same day, while date-only source data can still be stored normally.
+
 ## Stack
 
 - Oracle Database (FREE 26ai), PL/SQL
@@ -47,9 +49,13 @@ src/test/java/com/eloinsights/          test sources (currently just the default
 - **Rating attribution**: Rating updates store only an effective date, with no link to any match or tournament. A source could theoretically report per‑event, but even then there’s no way to confirm the previous update was contiguous, so the link isn’t reliable. For these reasons, rating attribution was deliberately left out of the schema.
 - **Rating system assumption**: The engine assumes every ingested rating is Elo. However, the system has no automated way to detect whether a source is reporting a different rating system. If such a source were ingested, insight calculations that operate on `rating` values could produce incorrect or misleading results.
 
-## Business rules beyond the schema's structure
+## Less obvious data integrity rules
 
-A player appearing in a match, a rating update, or a tournament roster must be registered with the same source reporting them (a federation cannot report on a player it's never registered). `player_source_uk` on `PLAYER_EXTERNAL_REFS` backs this: one registration per player, per source, so the check behind it can never match more than one row. Enforced by the triggers in `db/triggers/`.
+Source-specific records must remain consistent. A player appearing in a match, a rating update, or a tournament roster must be registered with the same source reporting them. `player_source_uk` on `PLAYER_EXTERNAL_REFS` backs the player registration checks: they can never match more than one row. The player registration rules are enforced by the triggers in `db/triggers/`.
+
+Similarly, if a match belongs to a tournament, the tournament must also belong to the same source as the match. This is enforced by the composite foreign key on `(source_system_id, tournament_id)`.
+
+Finally, the `rating_history_player_source_effective_uk` constraint on `RATING_HISTORY` ensures that a player can have at most one rating from a given source at the same effective timestamp, preventing duplicates when ingestion batches overlap (idempotency).
 
 ## Where computation happens
 
