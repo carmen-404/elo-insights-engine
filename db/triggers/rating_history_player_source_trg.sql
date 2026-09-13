@@ -19,7 +19,7 @@ EXCEPTION
     WHEN NO_DATA_FOUND THEN
         RAISE_APPLICATION_ERROR(
             -20001,
-            'Player is not registered with the specified source system'
+            'Player is not registered with the rating entry''s source system'
         );
 END;
 /

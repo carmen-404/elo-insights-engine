@@ -38,20 +38,22 @@ BEGIN
         WHEN 1 THEN
             RAISE_APPLICATION_ERROR(
                 -20002,
-                'White player is not registered with the specified source system'
+                'White player is not registered with the match''s source system'
             );
 
         WHEN 2 THEN
             RAISE_APPLICATION_ERROR(
                 -20003,
-                'Black player is not registered with the specified source system'
+                'Black player is not registered with the match''s source system'
             );
 
         WHEN 3 THEN
             RAISE_APPLICATION_ERROR(
                 -20004,
-                'Neither player is registered with the specified source system'
+                'Neither player is registered with the match''s source system'
             );
+        ELSE -- 0: both players are registered
+            NULL; -- successful validation; without this branch, CASE_NOT_FOUND would be raised
     END CASE;
 END;
 /
