@@ -35,12 +35,11 @@ public class PlayerRatingSnapshotRepository {
 	}
 
 	// METHODS
-	// Ordered by effective_date - insights built on need chronological order
 	public List<PlayerRatingSnapshot> findByPlayerId(long playerId) {
 		String sql = "SELECT player_id, source_system_id, rating, effective_date "
 				+ "FROM RATING_HISTORY "
 				+ "WHERE player_id = ? "
-				+ "ORDER BY effective_date";
+				+ "ORDER BY source_system_id, effective_date";
 
 		return jdbcTemplate.query(sql, RATING_SNAPSHOT_MAPPER, playerId);
 	}
