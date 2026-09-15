@@ -1,24 +1,24 @@
 package com.eloinsights.domain;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public final class PlayerRatingProgressionEntry {
 
-	private final LocalDate effectiveDate;
+	private final LocalDateTime effectiveDate;
 	private final int effectiveRating;
-	private final Integer ratingDelta; // nullable, first entry has no previous to compare
-	private final Integer daysElapsed; // nullable, same reason
+	private final Integer ratingDelta; // nullable, if first entry has no previous to compare
+	private final Integer cumulativeChange; // nullable, same reason
 
 	// CONSTRUCTOR
-	public PlayerRatingProgressionEntry(LocalDate effectiveDate, int effectiveRating, Integer ratingDelta, Integer daysElapsed) {
+	public PlayerRatingProgressionEntry(LocalDateTime effectiveDate, int effectiveRating, Integer ratingDelta, Integer cumulativeChange) {
 		this.effectiveDate = effectiveDate;
 		this.effectiveRating = effectiveRating;
 		this.ratingDelta = ratingDelta;
-		this.daysElapsed = daysElapsed;
+		this.cumulativeChange = cumulativeChange;
 	}
 
 	// GETTERS
-	public LocalDate getEffectiveDate() {
+	public LocalDateTime getEffectiveDate() {
 		return effectiveDate;
 	}
 
@@ -30,8 +30,8 @@ public final class PlayerRatingProgressionEntry {
 		return ratingDelta;
 	}
 
-	public Integer getDaysElapsed() {
-		return daysElapsed;
+	public Integer getCumulativeChange() {
+		return cumulativeChange;
 	}
 
 }

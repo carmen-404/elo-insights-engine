@@ -35,7 +35,8 @@ docs/           architecture and data model diagrams
 src/main/java/com/eloinsights/      Spring Boot application
 ├── EloInsightsEngineApplication.java   application entry point
 ├── controller/   REST endpoints, one controller per resource
-├── domain/       immutable DTOs for database data; fields are either direct row values or derived
+├── domain/       immutable DTOs; explicit classes used instead of records
+├── exception/ domain-specific exceptions and global exception handling
 ├── repository/   database access using Spring JDBC (JdbcTemplate and NamedParameterJdbcTemplate)
 └── service/      computation logic on top of repositories or other services, no direct DB access
 src/main/resources/
@@ -93,22 +94,39 @@ Response:
 ```
 Returns `404` if the player doesn't exist.
 
+### Get a source system
+`GET /source-systems/{SourceSystemId}`
+
+Example, `GET /source-systems/1`
+Response:
+```json
+{
+    "sourceSystemId":1,
+    "code":"ICU",
+    "displayName":
+    "Irish Chess Union"
+}
+```
+
 ### Get a player's rating history
 `GET /players/{playerId}/ratings`
 
-Example, `GET /players/3/ratings`
+Example, `GET /players/2/ratings`
 Response:
 ```json
 [
-    {"playerId":3,"sourceSystemId":2,"rating":2061,"effectiveDate":"2026-04-06"},
-    {"playerId":3,"sourceSystemId":5,"rating":2058,"effectiveDate":"2026-04-30"}
+    {"playerId":2,"sourceSystemId":1,"rating":1571,"effectiveDate":"2026-03-16"},
+    {"playerId":2,"sourceSystemId":6,"rating":1595,"effectiveDate":"2026-02-20"},
+    {"playerId":2,"sourceSystemId":6,"rating":1612,"effectiveDate":"2026-02-20"},
+    {"playerId":2,"sourceSystemId":6,"rating":1604,"effectiveDate":"2026-02-20"}
 ]
 ```
 
 ### Get a player's match history
-`GET /players/{playerId}/matches?sourceSystemId={id}&opponentId={id}&tournamentId={id}&from={date}&to={date}`
 
-The query parameters `sourceSystemId`, `opponentId`, `tournamentId`, `from`, and `to` are optional filters. If one is omitted, it is not applied. Dates use the `YYYY-MM-DD` format.
+`GET /players/{playerId}/matches?source-system-id={id}&opponent-id={id}&tournament-id={id}&from={date}&to={date}`
+
+The query parameters `source-system-id`, `opponent-id`, `tournament-id`, `from`, and `to` are optional filters. If one is omitted, it is not applied. Dates use the `YYYY-MM-DD` format.
 
 No filters, e.g. `GET /players/3/matches`:
 Response:
@@ -119,7 +137,7 @@ Response:
 ]
 ```
 
-Filters can combine, e.g. `GET /players/3/matches?opponentId=4&from=2026-01-01&to=2026-04-04`:
+Filters can combine, e.g. `GET /players/3/matches?opponent-id=4&from=2026-01-01&to=2026-04-04`:
 ```json
 [
     {"matchId":3,"playerId":3,"opponentId":4,"colour":"BLACK","result":"WIN","playedOn":"2026-04-04","sourceSystemId":2,"tournamentId":2}
@@ -128,25 +146,25 @@ Filters can combine, e.g. `GET /players/3/matches?opponentId=4&from=2026-01-01&t
 
 ### Get a player's colour performance
 
-`GET /players/{playerId}/matches/colour-performance?sourceSystemId={id}&opponentId={id}&tournamentId={id}&from={date}&to={date}`
+`GET /players/{playerId}/matches/colour-performance?source-system-id={id}&opponent-id={id}&tournament-id={id}&from={date}&to={date}`
 
-Returns the player's match performance split by colour. The query parameters `sourceSystemId`, `opponentId`, `tournamentId`, `from`, and `to` are optional filters. If one is omitted, it is not applied. Dates use the `YYYY-MM-DD` format.
+Returns the player's match performance split by colour. The query parameters `source-system-id`, `opponent-id`, `tournament-id`, `from`, and `to` are optional filters. If one is omitted, it is not applied. Dates use the `YYYY-MM-DD` format.
 
 No filters, e.g. `GET /players/1/matches/colour-performance`:
 Response:
 ```json
 {
     "playerId":1,
-    "whiteWinsCount":2,
+    "whiteWinsCount":3,
     "blackWinsCount":0,
     "whiteLossesCount":0,
     "blackLossesCount":1,
     "whiteDrawsCount":0,
-    "blackDrawsCount":0
+    "blackDrawsCount":1
 }
 ```
 
-Filters can combine, e.g. `GET /players/3/matches/colour-performance?sourceSystemId=2&from=2026-01-01&to=2026-04-04`
+Filters can combine, e.g. `GET /players/3/matches/colour-performance?source-system-id=2&from=2026-01-01&to=2026-04-04`
 ```json
 {
     "playerId":3,
@@ -160,16 +178,16 @@ Filters can combine, e.g. `GET /players/3/matches/colour-performance?sourceSyste
 ```
 
 ### Get a player's rating progression
-`GET /players/{playerId}/ratings/progression?sourceSystemId={sourceSystemId}`
+`GET /players/{playerId}/ratings/progression?source-system-id={id}`
 
 Progression is computed within one source at a time. Each source keeps its own independent rating history for a player, so mixing them would invent a progression that wouldn't be real.
 
-`sourceSystemId` is required e.g. `GET /players/1/ratings/progression?sourceSystemId=1`
+`source-system-id` is required e.g. `GET /players/1/ratings/progression?source-system-id=1`
 Response:
 ```json
 [
-    {"effectiveDate":"2026-01-10","effectiveRating":1700,"ratingDelta":null,"daysElapsed":null},
-    {"effectiveDate":"2026-02-15","effectiveRating":1720,"ratingDelta":20,"daysElapsed":36},
-    {"effectiveDate":"2026-03-16","effectiveRating":1758,"ratingDelta":38,"daysElapsed":29}
+    {"effectiveDate":"2026-01-10T00:00:00","effectiveRating":1700,"ratingDelta":null,"cumulativeChange":0},
+    {"effectiveDate":"2026-02-15T00:00:00","effectiveRating":1720,"ratingDelta":20,"cumulativeChange":20},
+    {"effectiveDate":"2026-03-16T00:00:00","effectiveRating":1758,"ratingDelta":38,"cumulativeChange":58}
 ]
 ```

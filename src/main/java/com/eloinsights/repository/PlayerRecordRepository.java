@@ -4,11 +4,13 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
 import com.eloinsights.domain.PlayerRecord;
+import com.eloinsights.exception.PlayerNotFoundException;
 
 @Repository
 public class PlayerRecordRepository {
@@ -43,7 +45,12 @@ public class PlayerRecordRepository {
 					+ "FROM PLAYERS "
 					+ "WHERE player_id = ?";
 		
-		return jdbcTemplate.queryForObject(sql, PLAYER_RECORD_MAPPER, playerId);
+		// Empty as "Player not found"; propagate other result-size errors.
+		try {
+			return jdbcTemplate.queryForObject(sql, PLAYER_RECORD_MAPPER, playerId);
+		} catch (EmptyResultDataAccessException e) {
+			throw new PlayerNotFoundException();
+		}
 		
 	}
 		

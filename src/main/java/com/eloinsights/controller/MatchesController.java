@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.eloinsights.domain.PlayerColourPerformance;
 import com.eloinsights.domain.PlayerScoringSnapshot;
+import com.eloinsights.repository.PlayerRecordRepository;
 import com.eloinsights.repository.PlayerScoringSnapshotRepository;
 import com.eloinsights.service.PlayerColourPerformanceService;
 
@@ -19,11 +20,14 @@ public class MatchesController {
 	
 	private final PlayerScoringSnapshotRepository scoringRepo;
 	private final PlayerColourPerformanceService colourPerformanceService;
+	private final PlayerRecordRepository playerRepo;
 
 	// CONSTRUCTOR
-	public MatchesController(PlayerScoringSnapshotRepository scoringRepo, PlayerColourPerformanceService colourPerformanceService) {
+	public MatchesController(PlayerScoringSnapshotRepository scoringRepo, PlayerColourPerformanceService colourPerformanceService,
+			PlayerRecordRepository playerRepo) {
 		this.scoringRepo = scoringRepo;
 		this.colourPerformanceService = colourPerformanceService;
+		this.playerRepo = playerRepo;
 	}
 
 	// METHODS
@@ -31,12 +35,16 @@ public class MatchesController {
 	// Matches' History
 	@GetMapping("/players/{playerId}/matches")
 	public ResponseEntity<List<PlayerScoringSnapshot>> getMatchesByPlayerId(
-			@PathVariable Long playerId,
-			@RequestParam(required = false) Long sourceSystemId,
-			@RequestParam(required = false) Long opponentId,
-			@RequestParam(required = false) Long tournamentId,
+			@PathVariable long playerId,
+			@RequestParam(name = "source-system-id", required = false) Long sourceSystemId,
+			@RequestParam(name = "opponent-id", required = false) Long opponentId,
+	        @RequestParam(name = "tournament-id", required = false) Long tournamentId,
 			@RequestParam(required = false) LocalDate from,
 			@RequestParam(required = false) LocalDate to) {
+		
+		// Checks if playerId exists
+		playerRepo.findByPlayerId(playerId);
+		
 		
 		List<PlayerScoringSnapshot> matches = scoringRepo.findByPlayerIdWithFilters(
 				playerId,
@@ -52,12 +60,15 @@ public class MatchesController {
 	// Colour Performance
 	@GetMapping("/players/{playerId}/matches/colour-performance")
 	public ResponseEntity<PlayerColourPerformance> getColourPerformanceByPlayerId(
-			@PathVariable Long playerId,
-			@RequestParam(required = false) Long sourceSystemId,
-			@RequestParam(required = false) Long opponentId,
-			@RequestParam(required = false) Long tournamentId,
+			@PathVariable long playerId,
+			@RequestParam(name = "source-system-id", required = false) Long sourceSystemId,
+			@RequestParam(name = "opponent-id", required = false) Long opponentId,
+	        @RequestParam(name = "tournament-id", required = false) Long tournamentId,
 			@RequestParam(required = false) LocalDate from,
 			@RequestParam(required = false) LocalDate to) {
+		
+		// Checks if playerId exists
+		playerRepo.findByPlayerId(playerId);
 
 		PlayerColourPerformance colourPerformance = colourPerformanceService.getColourPerformance(
 						playerId,
