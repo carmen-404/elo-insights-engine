@@ -1,4 +1,6 @@
- ELO Insights Engine
+# ELO Insights Engine
+
+*Portfolio project — Oracle DB design, PL/SQL, and a REST API in Java/Spring Boot.*
 
 Backend insights engine that ingests player, match, and rating history data from external sources and computes performance insights — volatility, consistency, opponent strength, rating progression — exposed via a JSON API.
 
